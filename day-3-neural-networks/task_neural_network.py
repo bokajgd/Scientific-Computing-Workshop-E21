@@ -3,6 +3,8 @@ Fully connected feedforward neural network
 """
 from typing import List, Tuple
 
+import random
+
 import numpy as np
 import mnist_loader
 
@@ -11,7 +13,7 @@ def sigmoid(x: np.ndarray, derivative: bool = False) -> np.ndarray:
     """
     The sigmoid function which is given by
     1/(1+exp(-x))
-
+p
     Where x is a number or np vector. if derivative is True it applied the
     derivative of the sigmoid function instead.
 
@@ -39,10 +41,22 @@ class NeuralNetwork:
                 While the last layer should contain 10 nodes. Corresponding to the number of output classes. Example input:
                 [784, 30, 10]
         """
+        # init layers
+        self.layers = layers 
+        self.n_layers = len(layers)
+
         ## init biases
+        self.biases = []
+
+        for i in range(self.n_layers-1):
+            self.biases.append(np.random.normal(0, 1, size=(self.layers[i+1], 1))) # default mean and standard deviation is 0 and 1
+            
         # self.biases = ...
-        ## init list of weight matrices
-        # self.weights = ...
+        self.weights = []
+
+        for i in range(self.n_layers-1):
+            self.weights.append(np.random.normal(0, 1, size=(self.layers[i+1], self.layers[i])))
+
 
     def forward(self, X: np.ndarray) -> np.ndarray:
         """Performs the feedforward pass of the neural network.
@@ -53,17 +67,19 @@ class NeuralNetwork:
 
         Returns:
             np.ndarray: The prediction of the neural network
-        """
+        """ 
+        
+        # create variable called 'input' and start by setting it to X
+        input = X
 
         # for each layer in the network
-            # (dot) multiply by the weights
-            # add the bias
-            # apply the activation function
+        for i in range(self.n_layers-1):
+            output = sigmoid(np.dot(self.weights[i], input) + self.biases[i])
+            input = output
         
-        # feel free to do this as a for loop if you wish to begin with.
-        pass
+        return output
 
-    # static methods simply mean that it does not take in self as an argument,
+    # static methods simply mean xthat it does not take in self as an argument,
     # thus have not access to the class it is essentially just a function attached to the class
     @staticmethod
     def cost(
@@ -86,11 +102,12 @@ class NeuralNetwork:
         Returns:
             np.ndarray: The loss/cost
         """
-        pass
+        return sum((output - actual)**2) / len(actual)
 
     def SGD(
         self,
         train_data: list,
+        val_data: list,
         learning_rate: float,
         epochs: int = 1,
         batch_size: int = 10,
@@ -115,12 +132,21 @@ class NeuralNetwork:
         """
         
         # for each epochs (epochs just mean number of repeats)
-            # (print epoch)
+        for l in range(epochs):
+            print(f"Running epoch {l+1}")
             # shuffle the data (hint: there is a package called random)
+            random.shuffle(train_data)
             # create batches of data
+            batches = [train_data[x:x+batch_size] for x in range(0, len(train_data), batch_size)]
             # backprop the given batch
+            for batch in batches:
+                self.backprop(batch, learning_rate=learning_rate)
+
+            # Run evaluation
+            prelim_eval = self.evaluate(val_data)
+            print(f"Validation accuracy after this epoch is {prelim_eval[1]/prelim_eval[0]*100}%")
+
             # (optional: print performance on validation)
-        pass
 
     def backprop(self, batch, learning_rate: float) -> None:
         """
@@ -195,12 +221,26 @@ class NeuralNetwork:
             Tuple[int, int]: A tuple where the first entry it the number of correct and the second entry
                 is the total number of predictions.
         """
-        # for each sample in data
-            # do a forward pass
-            # compare the output with the answer
-        # return number of correct and total number of predictions.
-        pass
+        
+        # Create variables for finale tuple
+        all_predictions = 0
+        correct_predictions = 0
 
+        # for each sample in data
+        for pixels, answer in data:
+            # do a forward pass
+            predcition = self.forward(pixels)
+            # number of predictions
+            all_predictions +=1
+            # compare the output with the answer
+            if answer == np.argmax(predcition, axis=0):
+                # If true, add one to correct predictions counter
+                correct_predictions +=1
+
+        # return number of correct and total number of predictions.
+        eval = (all_predictions, correct_predictions)
+
+        return eval
 
 if __name__ == "__main__":
 
@@ -210,24 +250,24 @@ if __name__ == "__main__":
     train_data, val_data, test_data = mnist_loader.load_data_wrapper()
 
     ## init your neural network
-    # network = NeuralNetwork([784, 30, 10])
+    network = NeuralNetwork([784, 30, 10])
 
     ## test forward pass on one example
-    # pixels = train_data[0][0] # one example
-    # answer = train_data[0][1]
-    # output = network.forward(X=pixels)
+    pixels = train_data[0][0] # one example
+    answer = train_data[0][1]
+    output = network.forward(X=pixels)
 
     ## calculate the cost
-    # cost = network.cost(output, actual=answer)
+    cost = network.cost(output, actual=answer)
 
     ## train using backprop.
     ## (this should be very slow with stachostic gradient descent)
-    # for i in range(10):
-    #     network.backprop(train_data, learning_rate=3)
-    #     print(network.evaluate(val_data))
+    for i in range(1):
+        network.backprop(train_data, learning_rate=3)
+        print(network.evaluate(val_data))
 
     ## train for one epoch
-    # network.SGD(train_data=train_data, epochs=1)
+    network.SGD(train_data=train_data, val_data=val_data, learning_rate=3, epochs=10, batch_size=10)
     
     ## evaluate the performance:
-    # print(network.evaluate(val_data))
+    print(network.evaluate(test_data))
