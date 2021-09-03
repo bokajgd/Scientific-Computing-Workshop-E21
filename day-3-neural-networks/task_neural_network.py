@@ -13,7 +13,7 @@ def sigmoid(x: np.ndarray, derivative: bool = False) -> np.ndarray:
     """
     The sigmoid function which is given by
     1/(1+exp(-x))
-p
+
     Where x is a number or np vector. if derivative is True it applied the
     derivative of the sigmoid function instead.
 
